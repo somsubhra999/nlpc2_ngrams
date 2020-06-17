@@ -66,19 +66,19 @@ with open(inpf_path, 'r') as inp_csvfile:
             # Keeping only 2-grams containing the current word
             for ngram in fdist_2gram:
                 if word in ngram:
-                    temp_fdist2[ngram] += fdist_2gram[ngram]
+                    temp_fdist2[ngram] = fdist_2gram[ngram]
             top_2grams = temp_fdist2.most_common(10)
 
             # Keeping only 3-grams containing the current word
             for ngram in fdist_3gram:
                 if word in ngram:
-                    temp_fdist3[ngram] += fdist_3gram[ngram]
+                    temp_fdist3[ngram] = fdist_3gram[ngram]
             top_3grams = temp_fdist3.most_common(10)
 
             # Keeping only 4-grams containing the current word
             for ngram in fdist_4gram:
                 if word in ngram:
-                    temp_fdist4[ngram] += fdist_4gram[ngram]
+                    temp_fdist4[ngram] = fdist_4gram[ngram]
             top_4grams = temp_fdist4.most_common(10)
 
             for i in range(10):
