@@ -1,19 +1,12 @@
-import nltk
-from nltk.corpus import stopwords
-from nltk.util import ngrams
-from nltk.probability import FreqDist
 from pathlib import Path
 import csv
+import ngram_toolkit as ngtk
 
 inpf_path = Path(Path.cwd(), 'data/ticket_Data.csv')
 outf_path = Path(Path.cwd(), 'data/ticket_Data_ngrams.csv')
 has_header = True          # Change this to False if the csv file doesn't have a header
 
-stop_words = set(stopwords.words('english'))
-fdist_word = FreqDist()
-fdist_2gram = FreqDist()
-fdist_3gram = FreqDist()
-fdist_4gram = FreqDist()
+fdist_list = [None, None, None, None]          # List containing frequency distributions for 1, 2, 3 and 4-grams
 
 with open(inpf_path, 'r') as inp_csvfile:
     ticket_rdr = csv.reader(inp_csvfile, delimiter=',', quotechar='"')
@@ -23,26 +16,25 @@ with open(inpf_path, 'r') as inp_csvfile:
 
     for row in ticket_rdr:
         ticket_id, description = row
-        tokens = nltk.word_tokenize(description)
-        tokens = [token.lower() for token in tokens]          # Converting to lowercase
-        filtered_tokens = [token for token in tokens if token not in stop_words]          # Removing stopwords
+        row_ngram = ngtk.Ngram(description)
 
-        twograms = ngrams(filtered_tokens, 2)
-        threegrams = ngrams(filtered_tokens, 3)
-        fourgrams = ngrams(filtered_tokens, 4)
+        for i in range(4):
+            if not fdist_list[i]:
+                fdist_list[i] = row_ngram.get_fdist(i + 1)
+            else:
+                ng = row_ngram.get_ngrams(i + 1)
+                fdist_list[i] = ngtk.Ngram.update_fdist(fdist_list[i], ng)
 
-        for token in filtered_tokens:
-            fdist_word[token] += 1
-        for token in twograms:
-            fdist_2gram[token] += 1
-        for token in threegrams:
-            fdist_3gram[token] += 1
-        for token in fourgrams:
-            fdist_4gram[token] += 1
+    # This part creates individual csv files containing all the n-gram and corresponding frequency for n = (1, 2, 3, 4)
+    for i in range(4):
+        out_fname = 'file_' + str(i + 1) + '-gram.csv'
+        out_ngpath = outf_1gram = Path(Path.cwd(), 'data/' + out_fname)
 
-    # Removing period '.' and comma ',' from word frequency distribution
-    del fdist_word['.']
-    del fdist_word[',']
+        with open(out_ngpath, 'w', newline='\n', encoding='utf-8') as out_csvfile:
+            csvwriter = csv.writer(out_csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csvwriter.writerow(['N-gram', 'Frequency'])
+            for ng in fdist_list[i]:
+                csvwriter.writerow([ng, fdist_list[i][ng]])
 
     with open(outf_path, 'w', newline='\n', encoding='utf-8') as out_csvfile:
         csvwriter = csv.writer(out_csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -58,28 +50,11 @@ with open(inpf_path, 'r') as inp_csvfile:
                             '4-gram freq'])
 
         # Processing only for the 10 most common words
-        for word, freq in fdist_word.most_common(10):
-            temp_fdist2 = FreqDist()
-            temp_fdist3 = FreqDist()
-            temp_fdist4 = FreqDist()
-
-            # Keeping only 2-grams containing the current word
-            for ngram in fdist_2gram:
-                if word in ngram:
-                    temp_fdist2[ngram] = fdist_2gram[ngram]
-            top_2grams = temp_fdist2.most_common(10)
-
-            # Keeping only 3-grams containing the current word
-            for ngram in fdist_3gram:
-                if word in ngram:
-                    temp_fdist3[ngram] = fdist_3gram[ngram]
-            top_3grams = temp_fdist3.most_common(10)
-
-            # Keeping only 4-grams containing the current word
-            for ngram in fdist_4gram:
-                if word in ngram:
-                    temp_fdist4[ngram] = fdist_4gram[ngram]
-            top_4grams = temp_fdist4.most_common(10)
+        for ngram, freq in fdist_list[0].most_common(10):
+            word = ngram[0]
+            top_2grams = ngtk.Ngram.filter_fdist(fdist_list[1], word).most_common(10)
+            top_3grams = ngtk.Ngram.filter_fdist(fdist_list[2], word).most_common(10)
+            top_4grams = ngtk.Ngram.filter_fdist(fdist_list[3], word).most_common(10)
 
             for i in range(10):
                 csvwriter.writerow([word,
